@@ -2,21 +2,61 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <style>
+  .card {
+    position: relative;
+    float: left;
+    box-shadow: 0 4px 4px #999;
+    padding: 40px;
+    margin: 20px;
+  }
+
+  .card: hover {
+    background: #f55f5f;
+    box-shadow: inset 0 0 10px #666;
+    cursor: pointer;
+  }
+
+  .x {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 0;
+  }
+  </style>
 </head>
 <body>
-<input type="text" placeholder="interval in minutes">
-<input type="checkbox">repeat<br>
-<button>go</button>
+<input type="text" name="interval" placeholder="interval in minutes">
+<input type="text" name="text" placeholder="text">
+<input type="checkbox">repeat
+<button>add</button>
+<div id="cards"></div>
 <script>
 Notification.requestPermission();
-var $ = document.querySelector;
+var $ = document.querySelector.bind(document);
+var cards = $("#cards");
 $("button").onclick = () => {
-  var delay = $("input[type='text']").value * 60 * 1000;
+  var delay = $("input[name='interval']").value * 60 * 1000;
+  var text = $("input[name='text']").value;
   var repeat = $("input[type='checkbox']").checked;
-  (repeat ? setInterval : setTimeout)(() => {
-    new Notification(">_<", { body: "go have a break" });
+  var timer = (repeat ? setInterval : setTimeout)(() => {
+    new Notification("!!!", { body: text });
   }, delay);
+  add(text, timer, repeat, delay);
 };
+function add(text, timer, repeat, delay) {
+  var div = document.createElement("div");
+  div.className = "card";
+  div.innerHTML = text;
+  cards.appendChild(div);
+  function rem() {
+    (repeat ? clearInterval : clearTimeout)(timer);
+    cards.removeChild(div);
+  };
+  div.onclick = rem;
+  if (!repeat)
+    setTimeout(rem, delay);
+}
 </script>
 </body>
 </html>
