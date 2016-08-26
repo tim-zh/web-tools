@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+</head>
+<body>
+<input type="text" placeholder="interval in minutes">
+<input type="checkbox">repeat<br>
+<button>go</button>
+<script>
+Notification.requestPermission();
+var $ = document.querySelector;
+$("button").onclick = () => {
+  var delay = $("input[type='text']").value * 60 * 1000;
+  var repeat = $("input[type='checkbox']").checked;
+  (repeat ? setInterval : setTimeout)(() => {
+    new Notification(">_<", { body: "go have a break" });
+  }, delay);
+};
+</script>
+</body>
+</html>
