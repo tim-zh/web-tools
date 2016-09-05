@@ -21,23 +21,26 @@
 <input type="number" name="interval" min="0.017" step="any" placeholder="interval in minutes">
 <input type="text" name="text" placeholder="text">
 <input type="checkbox">repeat
-<button>add</button>
+<button id="add">add</button>
+<button id="save">save in url</button>
 <div id="cards"></div>
 <script>
 Notification.requestPermission();
 var $ = document.querySelector.bind(document);
-var cards = $("#cards");
-$("button").onclick = () => {
-  var delay = ($("input[name='interval']").value * 60)|0;
-  delay = delay >= 1 ? delay : 1;
+var cards = [];
+var cardsDiv = $("#cards");
+$("#add").onclick = () => {
+  var delay = $("input[name='interval']").value;
   var text = $("input[name='text']").value;
   var repeat = $("input[type='checkbox']").checked;
+  add(delay, text, repeat);
+};
+function add(d, text, repeat) {
+  var delay = (d * 60)|0;
+  delay = delay >= 1 ? delay : 1;
   var timer = (repeat ? setInterval : setTimeout)(() => {
     new Notification("!!!", { body: text });
   }, delay * 1000);
-  add(text, timer, repeat, delay);
-};
-function add(text, timer, repeat, delay) {
   var div = document.createElement("div");
   div.className = "card";
   var passed = delay;
@@ -48,16 +51,29 @@ function add(text, timer, repeat, delay) {
       passed += delay;
     div.innerHTML = text + "<br>" + passed;
   }, 1000);
-  cards.appendChild(div);
+  cardsDiv.appendChild(div);
+  var card = "" + d + "|" + text + "|" + (repeat|0);
+  cards.push(card);
   function rem() {
+    cards.splice(cards.indexOf(card), 1);
     (repeat ? clearInterval : clearTimeout)(timer);
     clearInterval(countdown);
-    cards.removeChild(div);
+    cardsDiv.removeChild(div);
   };
   div.onclick = rem;
   if (!repeat)
     setTimeout(rem, delay * 1000);
 }
+var params = window.location.search.substring(1);
+if (params) {
+  params.split("&").forEach(t => {
+    var a = t.split("|");
+    add(a[0], a[1], a[2] == 1);
+  });
+}
+$("#save").onclick = () => {
+  window.location.search = "?" + cards.reduce((a, b) => a + "&" + b);
+};
 </script>
 </body>
 </html>
