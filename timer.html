@@ -59,7 +59,7 @@ function add(d, text, repeat) {
     (repeat ? clearInterval : clearTimeout)(timer);
     clearInterval(countdown);
     cardsDiv.removeChild(div);
-  };
+  }
   div.onclick = rem;
   if (!repeat)
     setTimeout(rem, delay * 1000);

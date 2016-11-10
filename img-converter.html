@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>image converter (svg to png)</title>
+</head>
+<body>
+<input type="file"><br>
+<input type="number" id="width"><label for="width">width</label><br>
+<input type="number" id="height"><label for="height">height</label><br>
+<input type="checkbox" checked id="keep-ratio"><label for="keep-ratio">keep ratio</label><br>
+<button id="to-png">convert</button><br>
+svg:
+<div id="original"></div>
+png:
+<div><img src=""/></div>
+<canvas style="display: none;"></canvas>
+<script>
+  let svg;
+  let canvas = document.querySelector("canvas");
+  let widthInput = document.querySelector("#width");
+  let heightInput = document.querySelector("#height");
+  let originalWidth;
+  let originalHeight;
+  widthInput.onchange = function () {
+    canvas.width = this.value;
+    svg.setAttribute("width", this.value);
+    if (document.querySelector("#keep-ratio").checked) {
+      heightInput.value = (this.value / originalWidth * originalHeight)|0;
+      canvas.height = heightInput.value;
+      svg.setAttribute("height", heightInput.value);
+    }
+    svg.setAttribute("transform", "scale(" + svg.getAttribute("width") / originalWidth + ", " + svg.getAttribute("height") / originalHeight + ")");
+  };
+  heightInput.onchange = function () {
+    canvas.height = this.value;
+    svg.setAttribute("height", this.value);
+    if (document.querySelector("#keep-ratio").checked) {
+      widthInput.value = (this.value / originalHeight * originalwidth)|0;
+      canvas.width = widthInput.value;
+      svg.setAttribute("width", widthInput.value);
+    }
+    svg.setAttribute("transform", "scale(" + svg.getAttribute("width") / originalWidth + ", " + svg.getAttribute("height") / originalHeight + ")");
+  };
+  document.querySelector("input[type=file]").onchange = function () {
+    let file = this.files[0];
+    let reader  = new FileReader();
+    reader.onloadend = function () {
+      document.querySelector("#original").innerHTML = reader.result;
+      svg = document.querySelector("svg");
+      originalWidth = svg.getAttribute("width");
+      originalHeight = svg.getAttribute("height");
+      widthInput.value = originalWidth;
+      heightInput.value = originalHeight;
+    };
+    if (file)
+      reader.readAsText(file);
+  };
+  document.querySelector("#to-png").onclick = () => {
+    if (document.querySelector("#original").innerHTML) {
+      let image = new Image;
+      image.src = "data:image/svg+xml;base64,"+ btoa(document.querySelector("#original").innerHTML);
+      image.onload = function() {
+        canvas.getContext("2d").drawImage(image, 0, 0);
+        document.querySelector("img").src = canvas.toDataURL("image/png");
+      };
+    }
+  };
+</script>
+</body>
+</html>
