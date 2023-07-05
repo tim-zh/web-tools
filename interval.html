@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>interval</title>
+  <style>
+    * {
+      font-size: 1.2em;
+    }
+
+    button {
+      background: #5f5ff5;
+      border: none;
+      border-radius: 1em;
+      color: #fff;
+      margin: 1em;
+      padding: 1em;
+    }
+  </style>
+</head>
+<body>
+<script>
+  let words = JSON.parse(localStorage.getItem("words")) || [] //todo no globals
+  let wordsMetadata = JSON.parse(localStorage.getItem("words-metadata")) || {}
+</script>
+
+<button id="configs-btn">configure</button>
+<div id="configs-panel" style="display:none">
+  <label>
+    words in a lesson
+    <input type="number" id="batch-size">
+  </label>
+  <button>save</button>
+</div>
+<script>
+  let configs = JSON.parse(localStorage.getItem("configs")) || {
+    batchSize: 30,
+    enableNotifications: false //todo
+  }
+  document.querySelector("#configs-btn").onclick = () => {
+    document.querySelector("#batch-size").value = configs.batchSize
+    document.querySelector("#configs-panel").style.display = "block"
+  }
+  document.querySelector("#configs-panel > button").onclick = () => {
+    configs.batchSize = document.querySelector("#batch-size").value
+    localStorage.setItem("configs", JSON.stringify(configs))
+    document.querySelector("#configs-panel").style.display = "none"
+  }
+</script>
+
+<button id="manage-words-btn">manage words</button>
+<div id="manage-words-panel" style="display:none">
+  <textarea></textarea>
+  <button>save</button>
+</div>
+<script>
+  document.querySelector("#manage-words-btn").onclick = () => {
+    document.querySelector("#manage-words-panel > textarea").value = words.map(x => x.join("=")).join("\n")
+    document.querySelector("#manage-words-panel").style.display = "block"
+  }
+  document.querySelector("#manage-words-panel > button").onclick = () => {
+    words = document.querySelector("#manage-words-panel > textarea").value.split(/\n/).filter(x => !!x).map(str => str.split("=", 2))
+    localStorage.setItem("words", JSON.stringify(words))
+    document.querySelector("#manage-words-panel").style.display = "none"
+    document.title = `total words: ${words.length}`
+    setTimeout(() => document.title = "interval", 1000)
+  }
+</script>
+
+<button>import</button> <!--todo-->
+<button>export</button> <!--todo-->
+<button id="start-btn">start a lesson</button>
+<div id="lesson-panel" style="display:none"></div>
+<script>
+  function compareWordsMetadata(a, b) {
+    if (a.timesUsed === b.timesUsed)
+      return a.lastUsed - b.lastUsed
+    else
+      return a.timesUsed - b.timesUsed
+  }
+
+  function metadataKey(wordEntry) {
+    return wordEntry[0] + "=" + wordEntry[1]
+  }
+
+  function getLeastUsedWords(number) {
+    return words.sort((a, b) => {
+      compareWordsMetadata(wordsMetadata[metadataKey(a)], wordsMetadata[metadataKey(b)])
+    }).slice(0, number)
+  }
+
+  function updateMetadata(lessonWords) {
+    let timestamp = Date.now()
+    lessonWords.forEach(word => {
+      wordsMetadata[metadataKey(word)] = {
+        "lastUsed": timestamp,
+        "timesUsed": (wordsMetadata[metadataKey(word)] || 0) + 1
+      }
+    })
+    localStorage.setItem("words-metadata", JSON.stringify(wordsMetadata))
+  }
+
+  document.querySelector("#start-btn").onclick = () => {
+    let lessonPanel = document.querySelector("#lesson-panel")
+    let lessonWords = getLeastUsedWords(configs.batchSize)
+    //todo
+    lessonPanel.style.display = "block"
+  }
+</script>
+
+</body>
+</html>
