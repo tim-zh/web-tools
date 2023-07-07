@@ -58,19 +58,33 @@
     words in a lesson
     <input type="number" id="batch-size">
   </label>
+  <label>
+    enable exercise 1
+    <input type="checkbox" id="enable-exercise1">
+  </label>
+  <label>
+    enable exercise 2
+    <input type="checkbox" id="enable-exercise2">
+  </label>
   <button>save</button>
 </div>
 <script>
   let configs = JSON.parse(localStorage.getItem("configs")) || {
     batchSize: 30,
+    enableExercise1: true,
+    enableExercise2: true,
     enableNotifications: false //todo
   }
   document.querySelector("#configs-btn").onclick = () => {
     document.querySelector("#batch-size").value = configs.batchSize
+    document.querySelector("#enable-exercise1").checked = configs.enableExercise1
+    document.querySelector("#enable-exercise2").checked = configs.enableExercise2
     document.querySelector("#configs-panel").style.display = "block"
   }
   document.querySelector("#configs-panel > button").onclick = () => {
     configs.batchSize = document.querySelector("#batch-size").value
+    configs.enableExercise1 = document.querySelector("#enable-exercise1").checked
+    configs.enableExercise2 = document.querySelector("#enable-exercise2").checked
     localStorage.setItem("configs", JSON.stringify(configs))
     document.querySelector("#configs-panel").style.display = "none"
   }
@@ -145,9 +159,16 @@
   document.querySelector("#start-btn").onclick = () => {
     let lessonPanel = document.querySelector("#lesson-panel")
     let lessonWords = getLeastUsedWords(configs.batchSize)
-    let ex2 = () => showExerciseSeries(lessonWords, lessonPanel, showExercise2, () => showLessonEnd(lessonPanel))
-    let ex1 = () => showExerciseSeries(lessonWords, lessonPanel, showExercise1, () => ex2())
-    ex1()
+    let doneCallback = () => showLessonEnd(lessonPanel)
+    if (configs.enableExercise2) {
+      let closureCallback = doneCallback
+      doneCallback = () => showExerciseSeries(lessonWords, lessonPanel, showExercise2, closureCallback)
+    }
+    if (configs.enableExercise1) {
+      let closureCallback = doneCallback
+      doneCallback = () => showExerciseSeries(lessonWords, lessonPanel, showExercise1, closureCallback)
+    }
+    doneCallback()
     lessonPanel.style.display = "block"
   }
 </script>
