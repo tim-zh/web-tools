@@ -21,6 +21,35 @@
 <script>
   let words = JSON.parse(localStorage.getItem("words")) || [] //todo no globals
   let wordsMetadata = JSON.parse(localStorage.getItem("words-metadata")) || {}
+
+  function metadataKey(wordEntry) {
+    return wordEntry[0] + "=" + wordEntry[1]
+  }
+
+  function getWordMetadata(wordEntry) {
+    return wordsMetadata[metadataKey(wordEntry)] || {
+      "lastUsed": new Date(2000, 0),
+      "timesUsed": 0
+    }
+  }
+
+  function compareWordsMetadata(a, b) {
+    if (a.timesUsed === b.timesUsed)
+      return a.lastUsed - b.lastUsed
+    else
+      return a.timesUsed - b.timesUsed
+  }
+
+  function updateMetadata(wordEntries) {
+    let timestamp = Date.now()
+    wordEntries.forEach(word => {
+      wordsMetadata[metadataKey(word)] = {
+        "lastUsed": timestamp,
+        "timesUsed": (wordsMetadata[metadataKey(word)] || 0) + 1
+      }
+    })
+    localStorage.setItem("words-metadata", JSON.stringify(wordsMetadata))
+  }
 </script>
 
 <button id="configs-btn">configure</button>
@@ -71,41 +100,74 @@
 <button id="start-btn">start a lesson</button>
 <div id="lesson-panel" style="display:none"></div>
 <script>
-  function compareWordsMetadata(a, b) {
-    if (a.timesUsed === b.timesUsed)
-      return a.lastUsed - b.lastUsed
-    else
-      return a.timesUsed - b.timesUsed
-  }
-
-  function metadataKey(wordEntry) {
-    return wordEntry[0] + "=" + wordEntry[1]
-  }
 
   function getLeastUsedWords(number) {
     return words.sort((a, b) => {
-      compareWordsMetadata(wordsMetadata[metadataKey(a)], wordsMetadata[metadataKey(b)])
+      compareWordsMetadata(getWordMetadata(a), getWordMetadata(b))
     }).slice(0, number)
   }
 
-  function updateMetadata(lessonWords) {
-    let timestamp = Date.now()
-    lessonWords.forEach(word => {
-      wordsMetadata[metadataKey(word)] = {
-        "lastUsed": timestamp,
-        "timesUsed": (wordsMetadata[metadataKey(word)] || 0) + 1
-      }
-    })
-    localStorage.setItem("words-metadata", JSON.stringify(wordsMetadata))
+  function showLessonEnd(container) {
+    container.innerHTML = document.querySelector(".lesson-end-panel").innerHTML
+    container.querySelector("button").onclick = () => container.innerHTML = ""
+  }
+
+  function showExercise1(wordEntry, container, doneCallback) {
+    container.innerHTML = document.querySelector(".exercise1-panel").innerHTML
+    container.querySelector(".left-word").innerHTML = wordEntry[0]
+    container.querySelector(".right-word").innerHTML = wordEntry[1]
+    container.querySelector("button").onclick = doneCallback
+  }
+
+  function showExercise2(wordEntry, container, doneCallback) {
+    container.innerHTML = document.querySelector(".exercise2-panel").innerHTML
+    container.querySelector(".top-word").innerHTML = wordEntry[0]
+    container.querySelector(".bottom-word").onclick = () => {
+      container.querySelector(".bottom-word").innerHTML = wordEntry[1]
+      container.querySelector(".bottom-word").active = false
+      container.querySelector(".exercise2-next-btn").style.visibility = "visible"
+    }
+    container.querySelector(".exercise2-next-btn").onclick = doneCallback
+  }
+
+  function showExerciseSeries(wordEntries, container, showExerciseCallback, doneCallback) {
+    let nextCallback = doneCallback
+    let i = wordEntries.length
+    while (i > 0) {
+      i -= 1
+      let closureWords = wordEntries[i]
+      let closureCallback = nextCallback
+      nextCallback = () => showExerciseCallback(closureWords, container, closureCallback)
+    }
+    nextCallback()
   }
 
   document.querySelector("#start-btn").onclick = () => {
     let lessonPanel = document.querySelector("#lesson-panel")
     let lessonWords = getLeastUsedWords(configs.batchSize)
-    //todo
+    let ex2 = () => showExerciseSeries(lessonWords, lessonPanel, showExercise2, () => showLessonEnd(lessonPanel))
+    let ex1 = () => showExerciseSeries(lessonWords, lessonPanel, showExercise1, () => ex2())
+    ex1()
     lessonPanel.style.display = "block"
   }
 </script>
+
+<div class="lesson-end-panel" style="display:none">
+  <div>done</div>
+  <button>close</button>
+</div>
+
+<div class="exercise1-panel" style="display:none">
+  <div class="left-word"></div>
+  <div class="right-word"></div>
+  <button>next</button>
+</div>
+
+<div class="exercise2-panel" style="display:none">
+  <div class="top-word"></div>
+  <button class="bottom-word">show</button>
+  <button class="exercise2-next-btn" style="visibility:hidden">next</button>
+</div>
 
 </body>
 </html>
