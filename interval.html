@@ -66,25 +66,34 @@
     enable exercise 2
     <input type="checkbox" id="enable-exercise2">
   </label>
+  <label>
+    enable exercise 3
+    <input type="checkbox" id="enable-exercise3">
+  </label>
   <button>save</button>
 </div>
 <script>
-  let configs = JSON.parse(localStorage.getItem("configs")) || {
+  let defaultConfigs = {
     batchSize: 30,
     enableExercise1: true,
     enableExercise2: true,
+    enableExercise3: true,
     enableNotifications: false //todo
   }
+  let loadedConfigs = JSON.parse(localStorage.getItem("configs"))
+  let configs = {...defaultConfigs, ...loadedConfigs}
   document.querySelector("#configs-btn").onclick = () => {
     document.querySelector("#batch-size").value = configs.batchSize
     document.querySelector("#enable-exercise1").checked = configs.enableExercise1
     document.querySelector("#enable-exercise2").checked = configs.enableExercise2
+    document.querySelector("#enable-exercise3").checked = configs.enableExercise3
     document.querySelector("#configs-panel").style.display = "block"
   }
   document.querySelector("#configs-panel > button").onclick = () => {
     configs.batchSize = document.querySelector("#batch-size").value
     configs.enableExercise1 = document.querySelector("#enable-exercise1").checked
     configs.enableExercise2 = document.querySelector("#enable-exercise2").checked
+    configs.enableExercise3 = document.querySelector("#enable-exercise3").checked
     localStorage.setItem("configs", JSON.stringify(configs))
     document.querySelector("#configs-panel").style.display = "none"
   }
@@ -144,6 +153,36 @@
     container.querySelector(".exercise2-next-btn").onclick = doneCallback
   }
 
+  function showExercise3(wordEntry, allWordEntries, container, doneCallback) {
+    container.innerHTML = document.querySelector(".exercise3-panel").innerHTML
+    let all = allWordEntries.filter(x => x !== wordEntry)
+    function rngWord() {
+      let result = all[Math.floor(Math.random() * all.length)] || ["", ""]
+      all = all.filter(x => x !== result)
+      return result
+    }
+    let rightOptionIndex = Math.floor(Math.random() * 4) + 1
+    function fillOption(i) {
+      let word = rightOptionIndex === i ? wordEntry : rngWord()
+      let optionBtn = container.querySelector(`.option${i}-word`)
+      optionBtn.innerHTML = word[1]
+      optionBtn.onclick = () => {
+        if (rightOptionIndex === i) {
+          optionBtn.style.backgroundColor = "#5ff55f"
+          setTimeout(doneCallback, 500)
+        } else {
+          optionBtn.style.backgroundColor = "#f55f5f"
+          optionBtn.active = false
+        }
+      }
+    }
+    fillOption(1)
+    fillOption(2)
+    fillOption(3)
+    fillOption(4)
+    container.querySelector(".guess-word").innerHTML = wordEntry[0]
+  }
+
   function showExerciseSeries(wordEntries, container, showExerciseCallback, doneCallback) {
     let nextCallback = doneCallback
     let i = wordEntries.length
@@ -156,10 +195,18 @@
     nextCallback()
   }
 
+  function showCompoundExerciseSeries(wordEntries, container, showExerciseCallback, doneCallback) {
+    showExerciseSeries(wordEntries, container, (a, b, c) => showExerciseCallback(a, wordEntries, b, c), doneCallback)
+  }
+
   document.querySelector("#start-btn").onclick = () => {
     let lessonPanel = document.querySelector("#lesson-panel")
     let lessonWords = getLeastUsedWords(configs.batchSize)
     let doneCallback = () => showLessonEnd(lessonPanel)
+    if (configs.enableExercise3) {
+      let closureCallback = doneCallback
+      doneCallback = () => showCompoundExerciseSeries(lessonWords, lessonPanel, showExercise3, closureCallback)
+    }
     if (configs.enableExercise2) {
       let closureCallback = doneCallback
       doneCallback = () => showExerciseSeries(lessonWords, lessonPanel, showExercise2, closureCallback)
@@ -188,6 +235,14 @@
   <div class="top-word"></div>
   <button class="bottom-word">show</button>
   <button class="exercise2-next-btn" style="visibility:hidden">next</button>
+</div>
+
+<div class="exercise3-panel" style="display:none">
+  <div class="guess-word"></div>
+  <button class="option1-word"></button>
+  <button class="option2-word"></button>
+  <button class="option3-word"></button>
+  <button class="option4-word"></button>
 </div>
 
 </body>
