@@ -15,6 +15,18 @@
       margin: 1em;
       padding: 1em;
     }
+
+    .correct {
+      background-color: #5ff55f;
+    }
+
+    .incorrect {
+      background-color: #f55f5f;
+    }
+
+    .pressed {
+      background-color: #2f2ff2;
+    }
   </style>
 </head>
 <body>
@@ -50,6 +62,24 @@
     })
     localStorage.setItem("words-metadata", JSON.stringify(wordsMetadata))
   }
+
+  function shuffle(xs) {
+    let copy = xs.slice()
+    for (let i = 0; i < xs.length; ++i) {
+      let j = Math.floor(Math.random() * (xs.length - i) + i)
+      let tmp = copy[i]
+      copy[i] = copy[j]
+      copy[j] = tmp
+    }
+    return copy
+  }
+
+  function group(xs, n) {
+    let result = []
+    for (let i = 0; i < xs.length; i += n)
+      result.push(xs.slice(i, i + n))
+    return result
+  }
 </script>
 
 <button id="configs-btn">configure</button>
@@ -57,6 +87,10 @@
   <label>
     words in a lesson
     <input type="number" id="batch-size">
+  </label>
+  <label>
+    delay in milliseconds
+    <input type="number" id="delay-millis">
   </label>
   <label>
     enable exercise 1
@@ -70,30 +104,40 @@
     enable exercise 3
     <input type="checkbox" id="enable-exercise3">
   </label>
+  <label>
+    enable exercise 4
+    <input type="checkbox" id="enable-exercise4">
+  </label>
   <button>save</button>
 </div>
 <script>
   let defaultConfigs = {
     batchSize: 30,
+    delayMillis: 500,
     enableExercise1: true,
     enableExercise2: true,
     enableExercise3: true,
+    enableExercise4: true,
     enableNotifications: false //todo
   }
   let loadedConfigs = JSON.parse(localStorage.getItem("configs"))
   let configs = {...defaultConfigs, ...loadedConfigs}
   document.querySelector("#configs-btn").onclick = () => {
     document.querySelector("#batch-size").value = configs.batchSize
+    document.querySelector("#delay-millis").value = configs.delayMillis
     document.querySelector("#enable-exercise1").checked = configs.enableExercise1
     document.querySelector("#enable-exercise2").checked = configs.enableExercise2
     document.querySelector("#enable-exercise3").checked = configs.enableExercise3
+    document.querySelector("#enable-exercise4").checked = configs.enableExercise4
     document.querySelector("#configs-panel").style.display = "block"
   }
   document.querySelector("#configs-panel > button").onclick = () => {
     configs.batchSize = document.querySelector("#batch-size").value
+    configs.delayMillis = document.querySelector("#delay-millis").value
     configs.enableExercise1 = document.querySelector("#enable-exercise1").checked
     configs.enableExercise2 = document.querySelector("#enable-exercise2").checked
     configs.enableExercise3 = document.querySelector("#enable-exercise3").checked
+    configs.enableExercise4 = document.querySelector("#enable-exercise4").checked
     localStorage.setItem("configs", JSON.stringify(configs))
     document.querySelector("#configs-panel").style.display = "none"
   }
@@ -101,16 +145,19 @@
 
 <button id="manage-words-btn">manage words</button>
 <div id="manage-words-panel" style="display:none">
-  <textarea></textarea>
+  <label>
+    format: word=translation, one per line
+    <textarea></textarea>
+  </label>
   <button>save</button>
 </div>
 <script>
   document.querySelector("#manage-words-btn").onclick = () => {
-    document.querySelector("#manage-words-panel > textarea").value = words.map(x => x.join("=")).join("\n")
+    document.querySelector("#manage-words-panel > label > textarea").value = words.map(x => x.join("=")).join("\n")
     document.querySelector("#manage-words-panel").style.display = "block"
   }
   document.querySelector("#manage-words-panel > button").onclick = () => {
-    words = document.querySelector("#manage-words-panel > textarea").value.split(/\n/).filter(x => !!x).map(str => str.split("=", 2))
+    words = document.querySelector("#manage-words-panel > label > textarea").value.split(/\n/).filter(x => !!x).map(str => str.split("=", 2))
     localStorage.setItem("words", JSON.stringify(words))
     document.querySelector("#manage-words-panel").style.display = "none"
     document.title = `total words: ${words.length}`
@@ -130,57 +177,118 @@
     }).slice(0, number)
   }
 
-  function showLessonEnd(container) {
-    container.innerHTML = document.querySelector(".lesson-end-panel").innerHTML
+  function showLessonEnd(wordEntries, container) {
+    container.innerHTML = document.querySelector("#lesson-end-panel").innerHTML
     container.querySelector("button").onclick = () => container.innerHTML = ""
+    updateMetadata(wordEntries)
   }
 
   function showExercise1(wordEntry, container, doneCallback) {
-    container.innerHTML = document.querySelector(".exercise1-panel").innerHTML
+    container.innerHTML = document.querySelector("#exercise1-panel").innerHTML
     container.querySelector(".left-word").innerHTML = wordEntry[0]
     container.querySelector(".right-word").innerHTML = wordEntry[1]
     container.querySelector("button").onclick = doneCallback
   }
 
   function showExercise2(wordEntry, container, doneCallback) {
-    container.innerHTML = document.querySelector(".exercise2-panel").innerHTML
+    container.innerHTML = document.querySelector("#exercise2-panel").innerHTML
     container.querySelector(".top-word").innerHTML = wordEntry[0]
     container.querySelector(".bottom-word").onclick = () => {
       container.querySelector(".bottom-word").innerHTML = wordEntry[1]
-      container.querySelector(".bottom-word").active = false
       container.querySelector(".exercise2-next-btn").style.visibility = "visible"
     }
     container.querySelector(".exercise2-next-btn").onclick = doneCallback
   }
 
   function showExercise3(wordEntry, allWordEntries, container, doneCallback) {
-    container.innerHTML = document.querySelector(".exercise3-panel").innerHTML
+    container.innerHTML = document.querySelector("#exercise3-panel").innerHTML
     let all = allWordEntries.filter(x => x !== wordEntry)
+
     function rngWord() {
       let result = all[Math.floor(Math.random() * all.length)] || ["", ""]
       all = all.filter(x => x !== result)
       return result
     }
+
     let rightOptionIndex = Math.floor(Math.random() * 4) + 1
+
     function fillOption(i) {
       let word = rightOptionIndex === i ? wordEntry : rngWord()
       let optionBtn = container.querySelector(`.option${i}-word`)
       optionBtn.innerHTML = word[1]
       optionBtn.onclick = () => {
         if (rightOptionIndex === i) {
-          optionBtn.style.backgroundColor = "#5ff55f"
-          setTimeout(doneCallback, 500)
-        } else {
-          optionBtn.style.backgroundColor = "#f55f5f"
-          optionBtn.active = false
-        }
+          optionBtn.classList.add("correct")
+          setTimeout(doneCallback, configs.delayMillis)
+        } else
+          optionBtn.classList.add("incorrect")
       }
     }
+
     fillOption(1)
     fillOption(2)
     fillOption(3)
     fillOption(4)
     container.querySelector(".guess-word").innerHTML = wordEntry[0]
+  }
+
+  function showExercise4(wordEntryGroup, container, doneCallback) {
+    container.innerHTML = document.querySelector("#exercise4-panel").innerHTML
+    let indexes = shuffle([...Array(wordEntryGroup.length).keys()])
+    let selectedLeftIndex = -1
+    let selectedRightIndex = -1
+    let matches = 0
+    function checkMatch() {
+      let left = container.querySelector(`.left${selectedLeftIndex + 1}-word`)
+      let right = container.querySelector(`.right${selectedRightIndex + 1}-word`)
+      left.classList.remove("pressed")
+      right.classList.remove("pressed")
+      if (selectedLeftIndex === indexes[selectedRightIndex]) {
+        left.classList.add("correct")
+        left.solved = true
+        right.classList.add("correct")
+        right.solved = true
+        matches += 1
+        if (matches === wordEntryGroup.length)
+          setTimeout(doneCallback, configs.delayMillis)
+      } else {
+        left.classList.add("incorrect")
+        right.classList.add("incorrect")
+        setTimeout(() => {
+          left.classList.remove("incorrect")
+          right.classList.remove("incorrect")
+        }, configs.delayMillis)
+      }
+      selectedLeftIndex = -1
+      selectedRightIndex = -1
+    }
+    for (let i = 0; i < indexes.length; ++i) {
+      let closureI = i
+      let left = container.querySelector(`.left${i + 1}-word`)
+      let right = container.querySelector(`.right${i + 1}-word`)
+      left.style.visibility = "visible"
+      right.style.visibility = "visible"
+      left.innerHTML = wordEntryGroup[i][0]
+      right.innerHTML = wordEntryGroup[indexes[i]][1]
+      left.onclick = () => {
+        if (left.solved)
+          return
+        selectedLeftIndex = closureI
+        if (selectedRightIndex === -1)
+          left.classList.add("pressed")
+        else
+          checkMatch()
+      }
+      right.onclick = () => {
+        if (right.solved)
+          return
+        selectedRightIndex = closureI
+        if (selectedLeftIndex === -1)
+          right.classList.add("pressed")
+        else
+          checkMatch()
+      }
+    }
   }
 
   function showExerciseSeries(wordEntries, container, showExerciseCallback, doneCallback) {
@@ -199,10 +307,20 @@
     showExerciseSeries(wordEntries, container, (a, b, c) => showExerciseCallback(a, wordEntries, b, c), doneCallback)
   }
 
+  function showGroupedExerciseSeries(wordEntries, container, showExerciseCallback, doneCallback) {
+    let xs = shuffle(wordEntries);
+    let shuffledGroups = group(xs, 4)
+    showExerciseSeries(shuffledGroups, container, showExerciseCallback, doneCallback)
+  }
+
   document.querySelector("#start-btn").onclick = () => {
     let lessonPanel = document.querySelector("#lesson-panel")
     let lessonWords = getLeastUsedWords(configs.batchSize)
-    let doneCallback = () => showLessonEnd(lessonPanel)
+    let doneCallback = () => showLessonEnd(lessonWords, lessonPanel)
+    if (configs.enableExercise4) {
+      let closureCallback = doneCallback
+      doneCallback = () => showGroupedExerciseSeries(lessonWords, lessonPanel, showExercise4, closureCallback)
+    }
     if (configs.enableExercise3) {
       let closureCallback = doneCallback
       doneCallback = () => showCompoundExerciseSeries(lessonWords, lessonPanel, showExercise3, closureCallback)
@@ -220,29 +338,40 @@
   }
 </script>
 
-<div class="lesson-end-panel" style="display:none">
+<div id="lesson-end-panel" style="display:none">
   <div>done</div>
   <button>close</button>
 </div>
 
-<div class="exercise1-panel" style="display:none">
+<div id="exercise1-panel" style="display:none">
   <div class="left-word"></div>
   <div class="right-word"></div>
   <button>next</button>
 </div>
 
-<div class="exercise2-panel" style="display:none">
+<div id="exercise2-panel" style="display:none">
   <div class="top-word"></div>
   <button class="bottom-word">show</button>
   <button class="exercise2-next-btn" style="visibility:hidden">next</button>
 </div>
 
-<div class="exercise3-panel" style="display:none">
+<div id="exercise3-panel" style="display:none">
   <div class="guess-word"></div>
   <button class="option1-word"></button>
   <button class="option2-word"></button>
   <button class="option3-word"></button>
   <button class="option4-word"></button>
+</div>
+
+<div id="exercise4-panel" style="display:none">
+  <button class="left1-word" style="visibility:hidden"></button>
+  <button class="right1-word" style="visibility:hidden"></button><br>
+  <button class="left2-word" style="visibility:hidden"></button>
+  <button class="right2-word" style="visibility:hidden"></button><br>
+  <button class="left3-word" style="visibility:hidden"></button>
+  <button class="right3-word" style="visibility:hidden"></button><br>
+  <button class="left4-word" style="visibility:hidden"></button>
+  <button class="right4-word" style="visibility:hidden"></button>
 </div>
 
 </body>
