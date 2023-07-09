@@ -4,11 +4,27 @@
   <title>interval</title>
   <style>
     * {
-      font-size: 1.2rem;
+      font-family: sans-serif;
+      font-size: 1.5rem;
+      line-height: 1.5rem;
+    }
+
+    @media (orientation: portrait) {
+      * {
+        font-size: 2rem;
+        line-height: 2rem;
+      }
     }
 
     body {
       margin: 1rem;
+    }
+
+    @media screen and (min-width: 1000px) {
+      body {
+        max-width: 1000px;
+        margin: 1rem auto;
+      }
     }
 
     .dark {
@@ -21,22 +37,16 @@
       color: #000;
     }
 
-    @media screen and (min-width: 1000px) {
-      body {
-        max-width: 1000px;
-        margin: 1rem auto;
-      }
-    }
-
     button {
       background-color: #5f5ff5;
       border: none;
-      border-radius: 1em;
+      border-radius: 1rem;
       color: #fff;
-      margin-bottom: 1em;
-      padding: 1em;
+      margin-bottom: 1rem;
+      padding: 1rem;
       width: 100%;
       cursor: pointer;
+      overflow: hidden;
     }
 
     button:hover {
@@ -66,19 +76,29 @@
     label {
       display: block;
       text-align: right;
-      margin-bottom: 1em;
+      margin-bottom: 1rem;
     }
 
-    input, select, textarea {
-      width: 50%;
+    input, select, textarea, .checkbox {
+      width: 40%;
       float: right;
-      margin-left: 1em;
+      margin-left: 1rem;
+    }
+
+    @media (orientation: portrait) {
+      input, select, textarea, .checkbox {
+        width: 30%;
+      }
     }
 
     textarea {
       resize: vertical;
-      margin-bottom: 1em;
+      margin-bottom: 1rem;
       height: 50vh;
+    }
+
+    #words-panel textarea {
+      width: 100%;
     }
 
     #import-panel textarea, #export-panel textarea {
@@ -86,13 +106,45 @@
       height: 20vh;
     }
 
+    .checkbox {
+      display: block;
+    }
+
     input[type=checkbox] {
-      transform: scale(2) translateX(-24%);
+      width: 0;
+      float: left;
+      margin: 0;
+      position: relative;
+      cursor: pointer;
+    }
+
+    input[type=checkbox]:before {
+      content: "";
+      display: block;
+      position: absolute;
+      width: 1rem;
+      height: 1rem;
+      top: 0;
+      left: 0;
+      border: 0.1rem solid #5f5f5f;
+    }
+
+    input[type=checkbox]:checked:after {
+      content: "";
+      display: block;
+      width: 0.3rem;
+      height: 0.7rem;
+      border: solid #5f5f5f;
+      border-width: 0 0.1rem 0.1rem 0;
+      transform: rotate(45deg);
+      position: absolute;
+      top: 0.1rem;
+      left: 0.4rem;
     }
 
     .column {
       width: 49%;
-      margin-bottom: 1em;
+      margin-bottom: 1rem;
       float: left;
     }
 
@@ -102,15 +154,16 @@
 
     .summary {
       text-align: center;
-      margin-bottom: 1em;
+      margin-bottom: 1rem;
     }
 
     #close-btn {
       position: absolute;
-      right: 1em;
-      bottom: 1em;
+      right: 1rem;
+      bottom: 1rem;
       width: auto;
       font-size: 1rem;
+      line-height: 1rem;
       display: none;
     }
   </style>
@@ -172,6 +225,17 @@
     }, configs.configsDelayMillis)
   }
 
+  function fitTextIn(container, text) {
+    container.innerText = text
+    if (container.scrollWidth > container.clientWidth) {
+      let style = getComputedStyle(container)
+      let padding = parseInt(style.paddingLeft) + parseInt(style.paddingRight)
+      let ratio = (container.clientWidth - padding) / (container.scrollWidth - padding)
+      let n = parseInt(style.fontSize)
+      container.style.fontSize = Math.floor(n * ratio) + "px"
+    }
+  }
+
   function shuffle(xs) {
     let copy = xs.slice()
     for (let i = 0; i < xs.length; ++i) {
@@ -206,19 +270,19 @@
   </label>
   <label>
     enable exercise 1
-    <input type="checkbox" id="enable-exercise1">
+    <span class="checkbox"><input type="checkbox" id="enable-exercise1"></span>
   </label>
   <label>
     enable exercise 2
-    <input type="checkbox" id="enable-exercise2">
+    <span class="checkbox"><input type="checkbox" id="enable-exercise2"></span>
   </label>
   <label>
     enable exercise 3
-    <input type="checkbox" id="enable-exercise3">
+    <span class="checkbox"><input type="checkbox" id="enable-exercise3"></span>
   </label>
   <label>
     enable exercise 4
-    <input type="checkbox" id="enable-exercise4">
+    <span class="checkbox"><input type="checkbox" id="enable-exercise4"></span>
   </label>
   <label>
     theme
@@ -228,11 +292,11 @@
     </select>
   </label>
   <label>
-    delay in exercise (milliseconds)
+    delay in lesson (ms)
     <input type="number" id="exercise-delay-millis" step="100">
   </label>
   <label>
-    delay in configs (milliseconds)
+    delay in configs (ms)
     <input type="number" id="configs-delay-millis" step="100">
   </label>
   <button id="save-configs-btn">save</button>
@@ -287,10 +351,9 @@
   document.querySelector("#theme").onchange = () => applyTheme(document.querySelector("#theme").value)
 </script>
 
-<div id="manage-words-panel" style="display:none">
+<div id="words-panel" style="display:none">
   <label>
-    format: word=translation, one per line
-    <textarea></textarea>
+    <textarea placeholder="format: word=translation, one per line"></textarea>
   </label>
   <button id="save-words-btn">save</button>
   <button id="close-words-btn">close</button>
@@ -300,12 +363,12 @@
     localStorage.setItem("words", JSON.stringify(words))
   }
   document.querySelector("#manage-words-btn").onclick = () => {
-    document.querySelector("#manage-words-panel textarea").value = words.map(x => x.join("=")).join("\n")
+    document.querySelector("#words-panel textarea").value = words.map(x => x.join("=")).join("\n")
     document.querySelector("#main-panel").style.display = "none"
-    document.querySelector("#manage-words-panel").style.display = "block"
+    document.querySelector("#words-panel").style.display = "block"
   }
   document.querySelector("#save-words-btn").onclick = () => {
-    words = document.querySelector("#manage-words-panel textarea").value
+    words = document.querySelector("#words-panel textarea").value
         .split(/\n/)
         .filter(x => !!x)
         .map(str => str.split("=", 2))
@@ -313,7 +376,7 @@
     buttonActionConfirmation(document.querySelector("#save-words-btn"), "correct", `total words: ${words.length}`)
   }
   document.querySelector("#close-words-btn").onclick = () => {
-    document.querySelector("#manage-words-panel").style.display = "none"
+    document.querySelector("#words-panel").style.display = "none"
     document.querySelector("#main-panel").style.display = "block"
   }
 </script>
@@ -409,17 +472,17 @@
 
   function showExercise1(wordEntry, container, doneCallback) {
     container.innerHTML = document.querySelector("#exercise1-panel").innerHTML
-    container.querySelector(".left-word").innerText = wordEntry[0]
-    container.querySelector(".right-word").innerText = wordEntry[1]
+    fitTextIn(container.querySelector(".left-word"), wordEntry[0])
+    fitTextIn(container.querySelector(".right-word"), wordEntry[1])
     container.querySelector(".next-btn").onclick = doneCallback
   }
 
   function showExercise2(wordEntry, container, doneCallback) {
     container.innerHTML = document.querySelector("#exercise2-panel").innerHTML
-    container.querySelector(".top-word").innerText = wordEntry[0]
+    fitTextIn(container.querySelector(".top-word"), wordEntry[0])
     container.querySelector(".bottom-word").onclick = () => {
       container.querySelector(".bottom-word").classList.add("readonly")
-      container.querySelector(".bottom-word").innerText = wordEntry[1]
+      fitTextIn(container.querySelector(".bottom-word"), wordEntry[1])
       container.querySelector(".next-btn").style.visibility = "visible"
     }
     container.querySelector(".next-btn").onclick = doneCallback
@@ -444,7 +507,7 @@
         optionBtn.style.display = "none"
         return
       }
-      optionBtn.innerText = word[1]
+      fitTextIn(optionBtn, word[1])
       optionBtn.onclick = () => {
         if (rightOptionIndex === i) {
           optionBtn.classList.add("correct")
@@ -458,7 +521,7 @@
     fillOption(2)
     fillOption(3)
     fillOption(4)
-    container.querySelector(".guess-word").innerText = wordEntry[0]
+    fitTextIn(container.querySelector(".guess-word"), wordEntry[0])
   }
 
   function showExercise4(wordEntryGroup, container, doneCallback) {
@@ -499,8 +562,8 @@
       let right = container.querySelector(`.right${i + 1}-word`)
       left.style.visibility = "visible"
       right.style.visibility = "visible"
-      left.innerText = wordEntryGroup[i][0]
-      right.innerText = wordEntryGroup[indexes[i]][1]
+      fitTextIn(left, wordEntryGroup[i][0])
+      fitTextIn(right, wordEntryGroup[indexes[i]][1])
       left.onclick = () => {
         if (left.solved)
           return
@@ -566,10 +629,10 @@
       let closureCallback = doneCallback
       doneCallback = () => showExerciseSeries(lessonWords, lessonPanel, showExercise1, closureCallback)
     }
-    doneCallback()
     document.querySelector("#main-panel").style.display = "none"
     lessonPanel.style.display = "block"
     document.querySelector("#close-btn").style.display = "block"
+    doneCallback()
   }
 </script>
 
