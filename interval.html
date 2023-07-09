@@ -29,28 +29,37 @@
     }
 
     button {
-      background: #5f5ff5;
+      background-color: #5f5ff5;
       border: none;
       border-radius: 1em;
       color: #fff;
       margin-bottom: 1em;
       padding: 1em;
       width: 100%;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #3f3ff3;
+    }
+
+    button:active, .pressed {
+      background-color: #1f1ff1;
     }
 
     .correct {
       background-color: #1ff11f;
     }
 
-    .incorrect {
+    .correct:hover {
+      background-color: #1ee11e;
+    }
+
+    .incorrect, .incorrect:hover, .incorrect:active {
       background-color: #f55f5f;
     }
 
-    .pressed {
-      background-color: #1f1ff1;
-    }
-
-    .readonly {
+    .readonly, .readonly:hover, .readonly:active {
       background-color: #5f5f5f;
     }
 
@@ -72,14 +81,23 @@
       height: 50vh;
     }
 
+    #import-panel textarea, #export-panel textarea {
+      width: 100%;
+      height: 20vh;
+    }
+
     input[type=checkbox] {
       transform: scale(2) translateX(-24%);
     }
 
-    .word-column {
-      width: 48%;
-      margin: 0 1% 1em 1%;
+    .column {
+      width: 49%;
+      margin-bottom: 1em;
       float: left;
+    }
+
+    .column:nth-of-type(2n+1) {
+      margin-right: 2%;
     }
 
     .summary {
@@ -120,6 +138,10 @@
       return a.timesUsed - b.timesUsed
   }
 
+  function saveWordsMetadata() {
+    localStorage.setItem("words-metadata", JSON.stringify(wordsMetadata))
+  }
+
   function updateMetadata(wordEntries) {
     let timestamp = Date.now()
     wordEntries.forEach(word => {
@@ -128,12 +150,26 @@
         "timesUsed": (wordsMetadata[metadataKey(word)] || 0) + 1
       }
     })
-    localStorage.setItem("words-metadata", JSON.stringify(wordsMetadata))
+    saveWordsMetadata()
   }
 
   function applyTheme(name) {
     document.body.classList.remove("light", "dark")
     document.body.classList.add(name)
+  }
+
+  function buttonActionConfirmation(btn, styleClass, newText) {
+    let text = btn.innerText
+    if (newText) {
+      btn.innerText = newText
+      document.title = newText
+    }
+    btn.classList.add(styleClass)
+    setTimeout(() => {
+      btn.classList.remove(styleClass)
+      btn.innerText = text
+      document.title = "interval"
+    }, configs.configsDelayMillis)
   }
 
   function shuffle(xs) {
@@ -158,8 +194,8 @@
 <div id="main-panel">
   <button id="configs-btn">configure</button>
   <button id="manage-words-btn">manage words</button>
-  <button>import</button> <!--todo-->
-  <button>export</button> <!--todo-->
+  <button id="import-btn" class="column">import</button>
+  <button id="export-btn" class="column">export</button>
   <button id="start-btn" class="correct">start a lesson</button>
 </div>
 
@@ -167,10 +203,6 @@
   <label>
     words in a lesson
     <input type="number" id="batch-size">
-  </label>
-  <label>
-    delay in milliseconds
-    <input type="number" id="delay-millis" step="100">
   </label>
   <label>
     enable exercise 1
@@ -195,42 +227,60 @@
       <option value="dark">dark</option>
     </select>
   </label>
-  <button>save</button>
+  <label>
+    delay in exercise (milliseconds)
+    <input type="number" id="exercise-delay-millis" step="100">
+  </label>
+  <label>
+    delay in configs (milliseconds)
+    <input type="number" id="configs-delay-millis" step="100">
+  </label>
+  <button id="save-configs-btn">save</button>
+  <button id="close-configs-btn">close</button>
 </div>
 <script>
   let defaultConfigs = {
     batchSize: 30,
-    delayMillis: 500,
     enableExercise1: true,
     enableExercise2: true,
     enableExercise3: true,
     enableExercise4: true,
     theme: "light",
+    exerciseDelayMillis: 300,
+    configsDelayMillis: 600,
     enableNotifications: false //todo
   }
   let loadedConfigs = JSON.parse(localStorage.getItem("configs"))
   let configs = {...defaultConfigs, ...loadedConfigs}
   applyTheme(configs.theme)
+  function saveConfigs() {
+    localStorage.setItem("configs", JSON.stringify(configs))
+  }
   document.querySelector("#configs-btn").onclick = () => {
     document.querySelector("#batch-size").value = configs.batchSize
-    document.querySelector("#delay-millis").value = configs.delayMillis
     document.querySelector("#enable-exercise1").checked = configs.enableExercise1
     document.querySelector("#enable-exercise2").checked = configs.enableExercise2
     document.querySelector("#enable-exercise3").checked = configs.enableExercise3
     document.querySelector("#enable-exercise4").checked = configs.enableExercise4
     document.querySelector("#theme").value = configs.theme
+    document.querySelector("#exercise-delay-millis").value = configs.exerciseDelayMillis
+    document.querySelector("#configs-delay-millis").value = configs.configsDelayMillis
     document.querySelector("#main-panel").style.display = "none"
     document.querySelector("#configs-panel").style.display = "block"
   }
-  document.querySelector("#configs-panel > button").onclick = () => {
+  document.querySelector("#save-configs-btn").onclick = () => {
     configs.batchSize = document.querySelector("#batch-size").value
-    configs.delayMillis = document.querySelector("#delay-millis").value
     configs.enableExercise1 = document.querySelector("#enable-exercise1").checked
     configs.enableExercise2 = document.querySelector("#enable-exercise2").checked
     configs.enableExercise3 = document.querySelector("#enable-exercise3").checked
     configs.enableExercise4 = document.querySelector("#enable-exercise4").checked
     configs.theme = document.querySelector("#theme").value
-    localStorage.setItem("configs", JSON.stringify(configs))
+    configs.exerciseDelayMillis = document.querySelector("#exercise-delay-millis").value
+    configs.configsDelayMillis = document.querySelector("#configs-delay-millis").value
+    saveConfigs()
+    buttonActionConfirmation(document.querySelector("#save-configs-btn"), "correct")
+  }
+  document.querySelector("#close-configs-btn").onclick = () => {
     document.querySelector("#configs-panel").style.display = "none"
     document.querySelector("#main-panel").style.display = "block"
   }
@@ -242,21 +292,96 @@
     format: word=translation, one per line
     <textarea></textarea>
   </label>
-  <button>save</button>
+  <button id="save-words-btn">save</button>
+  <button id="close-words-btn">close</button>
 </div>
 <script>
+  function saveWords() {
+    localStorage.setItem("words", JSON.stringify(words))
+  }
   document.querySelector("#manage-words-btn").onclick = () => {
     document.querySelector("#manage-words-panel textarea").value = words.map(x => x.join("=")).join("\n")
     document.querySelector("#main-panel").style.display = "none"
     document.querySelector("#manage-words-panel").style.display = "block"
   }
-  document.querySelector("#manage-words-panel > button").onclick = () => {
-    words = document.querySelector("#manage-words-panel textarea").value.split(/\n/).filter(x => !!x).map(str => str.split("=", 2))
-    localStorage.setItem("words", JSON.stringify(words))
+  document.querySelector("#save-words-btn").onclick = () => {
+    words = document.querySelector("#manage-words-panel textarea").value
+        .split(/\n/)
+        .filter(x => !!x)
+        .map(str => str.split("=", 2))
+    saveWords()
+    buttonActionConfirmation(document.querySelector("#save-words-btn"), "correct", `total words: ${words.length}`)
+  }
+  document.querySelector("#close-words-btn").onclick = () => {
     document.querySelector("#manage-words-panel").style.display = "none"
     document.querySelector("#main-panel").style.display = "block"
-    document.title = `total words: ${words.length}`
-    setTimeout(() => document.title = "interval", 1000)
+  }
+</script>
+
+<div id="import-panel" style="display:none">
+  <label>
+    <textarea></textarea>
+  </label>
+  <button id="do-import-btn">import and apply w/o saving</button>
+  <button id="save-import-btn">save</button>
+  <button id="close-import-btn">close</button>
+</div>
+<script>
+  document.querySelector("#import-btn").onclick = () => {
+    document.querySelector("#main-panel").style.display = "none"
+    document.querySelector("#import-panel").style.display = "block"
+  }
+  document.querySelector("#do-import-btn").onclick = () => {
+    try {
+      let [iConfigs, iWords, iMetadata] = atob(document.querySelector("#import-panel textarea").value)
+          .split("|")
+          .map(x => JSON.parse(x))
+      configs = {...configs, ...iConfigs}
+      words = iWords
+      wordsMetadata = iMetadata
+      buttonActionConfirmation(document.querySelector("#do-import-btn"), "correct")
+    } catch (e) {
+      buttonActionConfirmation(document.querySelector("#do-import-btn"), "incorrect", "invalid input")
+    }
+  }
+  document.querySelector("#save-import-btn").onclick = () => {
+    saveConfigs()
+    saveWords()
+    saveWordsMetadata()
+    buttonActionConfirmation(document.querySelector("#save-import-btn"), "correct")
+  }
+  document.querySelector("#close-import-btn").onclick = () => {
+    document.querySelector("#import-panel").style.display = "none"
+    document.querySelector("#main-panel").style.display = "block"
+  }
+</script>
+
+<div id="export-panel" style="display:none">
+  <button id="do-export-btn">export</button>
+  <label>
+    <textarea readonly></textarea>
+  </label>
+  <button id="copy-export-btn">copy to clipboard</button>
+  <button id="close-export-btn">close</button>
+</div>
+<script>
+  document.querySelector("#export-btn").onclick = () => {
+    document.querySelector("#main-panel").style.display = "none"
+    document.querySelector("#export-panel").style.display = "block"
+  }
+  document.querySelector("#do-export-btn").onclick = () => {
+    document.querySelector("#export-panel textarea").value =
+        btoa(JSON.stringify(configs) + "|" + JSON.stringify(words) + "|" + JSON.stringify(wordsMetadata))
+  }
+  document.querySelector("#copy-export-btn").onclick = () => {
+    document.querySelector("#export-panel textarea").select()
+    navigator.clipboard.writeText(document.querySelector("#export-panel textarea").value)
+    buttonActionConfirmation(document.querySelector("#copy-export-btn"), "correct", "copied")
+  }
+  document.querySelector("#close-export-btn").onclick = () => {
+    document.querySelector("#export-panel textarea").value = ""
+    document.querySelector("#export-panel").style.display = "none"
+    document.querySelector("#main-panel").style.display = "block"
   }
 </script>
 
@@ -284,17 +409,17 @@
 
   function showExercise1(wordEntry, container, doneCallback) {
     container.innerHTML = document.querySelector("#exercise1-panel").innerHTML
-    container.querySelector(".left-word").innerHTML = wordEntry[0]
-    container.querySelector(".right-word").innerHTML = wordEntry[1]
+    container.querySelector(".left-word").innerText = wordEntry[0]
+    container.querySelector(".right-word").innerText = wordEntry[1]
     container.querySelector(".next-btn").onclick = doneCallback
   }
 
   function showExercise2(wordEntry, container, doneCallback) {
     container.innerHTML = document.querySelector("#exercise2-panel").innerHTML
-    container.querySelector(".top-word").innerHTML = wordEntry[0]
+    container.querySelector(".top-word").innerText = wordEntry[0]
     container.querySelector(".bottom-word").onclick = () => {
       container.querySelector(".bottom-word").classList.add("readonly")
-      container.querySelector(".bottom-word").innerHTML = wordEntry[1]
+      container.querySelector(".bottom-word").innerText = wordEntry[1]
       container.querySelector(".next-btn").style.visibility = "visible"
     }
     container.querySelector(".next-btn").onclick = doneCallback
@@ -319,11 +444,11 @@
         optionBtn.style.display = "none"
         return
       }
-      optionBtn.innerHTML = word[1]
+      optionBtn.innerText = word[1]
       optionBtn.onclick = () => {
         if (rightOptionIndex === i) {
           optionBtn.classList.add("correct")
-          setTimeout(doneCallback, configs.delayMillis)
+          setTimeout(doneCallback, configs.exerciseDelayMillis)
         } else
           optionBtn.classList.add("incorrect")
       }
@@ -333,7 +458,7 @@
     fillOption(2)
     fillOption(3)
     fillOption(4)
-    container.querySelector(".guess-word").innerHTML = wordEntry[0]
+    container.querySelector(".guess-word").innerText = wordEntry[0]
   }
 
   function showExercise4(wordEntryGroup, container, doneCallback) {
@@ -355,14 +480,14 @@
         right.solved = true
         matches += 1
         if (matches === wordEntryGroup.length)
-          setTimeout(doneCallback, configs.delayMillis)
+          setTimeout(doneCallback, configs.exerciseDelayMillis)
       } else {
         left.classList.add("incorrect")
         right.classList.add("incorrect")
         setTimeout(() => {
           left.classList.remove("incorrect")
           right.classList.remove("incorrect")
-        }, configs.delayMillis)
+        }, configs.exerciseDelayMillis)
       }
       selectedLeftIndex = -1
       selectedRightIndex = -1
@@ -374,8 +499,8 @@
       let right = container.querySelector(`.right${i + 1}-word`)
       left.style.visibility = "visible"
       right.style.visibility = "visible"
-      left.innerHTML = wordEntryGroup[i][0]
-      right.innerHTML = wordEntryGroup[indexes[i]][1]
+      left.innerText = wordEntryGroup[i][0]
+      right.innerText = wordEntryGroup[indexes[i]][1]
       left.onclick = () => {
         if (left.solved)
           return
@@ -474,14 +599,14 @@
 </div>
 
 <div id="exercise4-panel" style="display:none">
-  <button class="word-column left1-word" style="visibility:hidden"></button>
-  <button class="word-column right1-word" style="visibility:hidden"></button>
-  <button class="word-column left2-word" style="visibility:hidden"></button>
-  <button class="word-column right2-word" style="visibility:hidden"></button>
-  <button class="word-column left3-word" style="visibility:hidden"></button>
-  <button class="word-column right3-word" style="visibility:hidden"></button>
-  <button class="word-column left4-word" style="visibility:hidden"></button>
-  <button class="word-column right4-word" style="visibility:hidden"></button>
+  <button class="column left1-word" style="visibility:hidden"></button>
+  <button class="column right1-word" style="visibility:hidden"></button>
+  <button class="column left2-word" style="visibility:hidden"></button>
+  <button class="column right2-word" style="visibility:hidden"></button>
+  <button class="column left3-word" style="visibility:hidden"></button>
+  <button class="column right3-word" style="visibility:hidden"></button>
+  <button class="column left4-word" style="visibility:hidden"></button>
+  <button class="column right4-word" style="visibility:hidden"></button>
 </div>
 
 <button id="close-btn" class="incorrect">✕</button>
