@@ -11,6 +11,13 @@
       margin: 1rem;
     }
 
+    @media screen and (min-width: 1000px) {
+      body {
+        max-width: 1000px;
+        margin: 1rem auto;
+      }
+    }
+
     button {
       background: #5f5ff5;
       border: none;
@@ -68,6 +75,15 @@
     .summary {
       text-align: center;
       margin-bottom: 1em;
+    }
+
+    #close-btn {
+      position: absolute;
+      right: 1em;
+      bottom: 1em;
+      width: auto;
+      font-size: 1rem;
+      display: none;
     }
   </style>
 </head>
@@ -228,6 +244,7 @@
   }
 
   function showLessonEnd(wordEntries, container) {
+    document.querySelector("#close-btn").style.display = "none"
     container.innerHTML = document.querySelector("#lesson-end-panel").innerHTML
     let lessonTime = Math.round((new Date() - lessonStart) / 1000)
     container.querySelector(".summary").innerText = `done. ${wordEntries.length} words. ${lessonTime} sec`
@@ -401,10 +418,11 @@
     doneCallback()
     document.querySelector("#main-panel").style.display = "none"
     lessonPanel.style.display = "block"
+    document.querySelector("#close-btn").style.display = "block"
   }
 </script>
 
-<div id="lesson-end-panel" style="display:none"> <!--todo close button-->
+<div id="lesson-end-panel" style="display:none">
   <div class="summary"></div>
   <button>close</button>
 </div>
@@ -439,6 +457,16 @@
   <button class="word-column left4-word" style="visibility:hidden"></button>
   <button class="word-column right4-word" style="visibility:hidden"></button>
 </div>
+
+<button id="close-btn">✕</button>
+<script>
+  document.querySelector("#close-btn").onclick = () => {
+    document.querySelector("#lesson-panel").innerHTML = ""
+    document.querySelector("#lesson-panel").style.display = "none"
+    document.querySelector("#main-panel").style.display = "block"
+    document.querySelector("#close-btn").style.display = "none"
+  }
+</script>
 
 </body>
 </html>
