@@ -11,6 +11,16 @@
       margin: 1rem;
     }
 
+    .dark {
+      background-color: #000;
+      color: #fff;
+    }
+
+    .light {
+      background-color: #fff;
+      color: #000;
+    }
+
     @media screen and (min-width: 1000px) {
       body {
         max-width: 1000px;
@@ -29,7 +39,7 @@
     }
 
     .correct {
-      background-color: #5ff55f;
+      background-color: #1ff11f;
     }
 
     .incorrect {
@@ -37,7 +47,7 @@
     }
 
     .pressed {
-      background-color: #2f2ff2;
+      background-color: #1f1ff1;
     }
 
     .readonly {
@@ -50,7 +60,7 @@
       margin-bottom: 1em;
     }
 
-    input, textarea {
+    input, select, textarea {
       width: 50%;
       float: right;
       margin-left: 1em;
@@ -87,7 +97,7 @@
     }
   </style>
 </head>
-<body>
+<body class="dark">
 <script>
   let words = JSON.parse(localStorage.getItem("words")) || []
   let wordsMetadata = JSON.parse(localStorage.getItem("words-metadata")) || {}
@@ -121,6 +131,11 @@
     localStorage.setItem("words-metadata", JSON.stringify(wordsMetadata))
   }
 
+  function applyTheme(name) {
+    document.body.classList.remove("light", "dark")
+    document.body.classList.add(name)
+  }
+
   function shuffle(xs) {
     let copy = xs.slice()
     for (let i = 0; i < xs.length; ++i) {
@@ -145,7 +160,7 @@
   <button id="manage-words-btn">manage words</button>
   <button>import</button> <!--todo-->
   <button>export</button> <!--todo-->
-  <button id="start-btn">start a lesson</button>
+  <button id="start-btn" class="correct">start a lesson</button>
 </div>
 
 <div id="configs-panel" style="display:none">
@@ -173,7 +188,13 @@
     enable exercise 4
     <input type="checkbox" id="enable-exercise4">
   </label>
-  <!--todo light dark themes-->
+  <label>
+    theme
+    <select id="theme">
+      <option value="light">light</option>
+      <option value="dark">dark</option>
+    </select>
+  </label>
   <button>save</button>
 </div>
 <script>
@@ -184,10 +205,12 @@
     enableExercise2: true,
     enableExercise3: true,
     enableExercise4: true,
+    theme: "light",
     enableNotifications: false //todo
   }
   let loadedConfigs = JSON.parse(localStorage.getItem("configs"))
   let configs = {...defaultConfigs, ...loadedConfigs}
+  applyTheme(configs.theme)
   document.querySelector("#configs-btn").onclick = () => {
     document.querySelector("#batch-size").value = configs.batchSize
     document.querySelector("#delay-millis").value = configs.delayMillis
@@ -195,6 +218,7 @@
     document.querySelector("#enable-exercise2").checked = configs.enableExercise2
     document.querySelector("#enable-exercise3").checked = configs.enableExercise3
     document.querySelector("#enable-exercise4").checked = configs.enableExercise4
+    document.querySelector("#theme").value = configs.theme
     document.querySelector("#main-panel").style.display = "none"
     document.querySelector("#configs-panel").style.display = "block"
   }
@@ -205,10 +229,12 @@
     configs.enableExercise2 = document.querySelector("#enable-exercise2").checked
     configs.enableExercise3 = document.querySelector("#enable-exercise3").checked
     configs.enableExercise4 = document.querySelector("#enable-exercise4").checked
+    configs.theme = document.querySelector("#theme").value
     localStorage.setItem("configs", JSON.stringify(configs))
     document.querySelector("#configs-panel").style.display = "none"
     document.querySelector("#main-panel").style.display = "block"
   }
+  document.querySelector("#theme").onchange = () => applyTheme(document.querySelector("#theme").value)
 </script>
 
 <div id="manage-words-panel" style="display:none">
@@ -458,7 +484,7 @@
   <button class="word-column right4-word" style="visibility:hidden"></button>
 </div>
 
-<button id="close-btn">✕</button>
+<button id="close-btn" class="incorrect">✕</button>
 <script>
   document.querySelector("#close-btn").onclick = () => {
     document.querySelector("#lesson-panel").innerHTML = ""
