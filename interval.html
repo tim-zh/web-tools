@@ -4,7 +4,11 @@
   <title>interval</title>
   <style>
     * {
-      font-size: 1.2em;
+      font-size: 1.2rem;
+    }
+
+    body {
+      margin: 1rem;
     }
 
     button {
@@ -12,8 +16,9 @@
       border: none;
       border-radius: 1em;
       color: #fff;
-      margin: 1em;
+      margin-bottom: 1em;
       padding: 1em;
+      width: 100%;
     }
 
     .correct {
@@ -27,11 +32,48 @@
     .pressed {
       background-color: #2f2ff2;
     }
+
+    .readonly {
+      background-color: #5f5f5f;
+    }
+
+    label {
+      display: block;
+      text-align: right;
+      margin-bottom: 1em;
+    }
+
+    input, textarea {
+      width: 50%;
+      float: right;
+      margin-left: 1em;
+    }
+
+    textarea {
+      resize: vertical;
+      margin-bottom: 1em;
+      height: 50vh;
+    }
+
+    input[type=checkbox] {
+      transform: scale(2) translateX(-24%);
+    }
+
+    .word-column {
+      width: 48%;
+      margin: 0 1% 1em 1%;
+      float: left;
+    }
+
+    .summary {
+      text-align: center;
+      margin-bottom: 1em;
+    }
   </style>
 </head>
 <body>
 <script>
-  let words = JSON.parse(localStorage.getItem("words")) || [] //todo no globals
+  let words = JSON.parse(localStorage.getItem("words")) || []
   let wordsMetadata = JSON.parse(localStorage.getItem("words-metadata")) || {}
 
   function metadataKey(wordEntry) {
@@ -82,7 +124,14 @@
   }
 </script>
 
-<button id="configs-btn">configure</button>
+<div id="main-panel">
+  <button id="configs-btn">configure</button>
+  <button id="manage-words-btn">manage words</button>
+  <button>import</button> <!--todo-->
+  <button>export</button> <!--todo-->
+  <button id="start-btn">start a lesson</button>
+</div>
+
 <div id="configs-panel" style="display:none">
   <label>
     words in a lesson
@@ -90,7 +139,7 @@
   </label>
   <label>
     delay in milliseconds
-    <input type="number" id="delay-millis">
+    <input type="number" id="delay-millis" step="100">
   </label>
   <label>
     enable exercise 1
@@ -108,6 +157,7 @@
     enable exercise 4
     <input type="checkbox" id="enable-exercise4">
   </label>
+  <!--todo light dark themes-->
   <button>save</button>
 </div>
 <script>
@@ -129,6 +179,7 @@
     document.querySelector("#enable-exercise2").checked = configs.enableExercise2
     document.querySelector("#enable-exercise3").checked = configs.enableExercise3
     document.querySelector("#enable-exercise4").checked = configs.enableExercise4
+    document.querySelector("#main-panel").style.display = "none"
     document.querySelector("#configs-panel").style.display = "block"
   }
   document.querySelector("#configs-panel > button").onclick = () => {
@@ -140,10 +191,10 @@
     configs.enableExercise4 = document.querySelector("#enable-exercise4").checked
     localStorage.setItem("configs", JSON.stringify(configs))
     document.querySelector("#configs-panel").style.display = "none"
+    document.querySelector("#main-panel").style.display = "block"
   }
 </script>
 
-<button id="manage-words-btn">manage words</button>
 <div id="manage-words-panel" style="display:none">
   <label>
     format: word=translation, one per line
@@ -153,21 +204,20 @@
 </div>
 <script>
   document.querySelector("#manage-words-btn").onclick = () => {
-    document.querySelector("#manage-words-panel > label > textarea").value = words.map(x => x.join("=")).join("\n")
+    document.querySelector("#manage-words-panel textarea").value = words.map(x => x.join("=")).join("\n")
+    document.querySelector("#main-panel").style.display = "none"
     document.querySelector("#manage-words-panel").style.display = "block"
   }
   document.querySelector("#manage-words-panel > button").onclick = () => {
-    words = document.querySelector("#manage-words-panel > label > textarea").value.split(/\n/).filter(x => !!x).map(str => str.split("=", 2))
+    words = document.querySelector("#manage-words-panel textarea").value.split(/\n/).filter(x => !!x).map(str => str.split("=", 2))
     localStorage.setItem("words", JSON.stringify(words))
     document.querySelector("#manage-words-panel").style.display = "none"
+    document.querySelector("#main-panel").style.display = "block"
     document.title = `total words: ${words.length}`
     setTimeout(() => document.title = "interval", 1000)
   }
 </script>
 
-<button>import</button> <!--todo-->
-<button>export</button> <!--todo-->
-<button id="start-btn">start a lesson</button>
 <div id="lesson-panel" style="display:none"></div>
 <script>
 
@@ -179,7 +229,13 @@
 
   function showLessonEnd(wordEntries, container) {
     container.innerHTML = document.querySelector("#lesson-end-panel").innerHTML
-    container.querySelector("button").onclick = () => container.innerHTML = ""
+    let lessonTime = Math.round((new Date() - lessonStart) / 1000)
+    container.querySelector(".summary").innerText = `done. ${wordEntries.length} words. ${lessonTime} sec`
+    container.querySelector("button").onclick = () => {
+      container.innerHTML = ""
+      container.style.display = "none"
+      document.querySelector("#main-panel").style.display = "block"
+    }
     updateMetadata(wordEntries)
   }
 
@@ -187,17 +243,18 @@
     container.innerHTML = document.querySelector("#exercise1-panel").innerHTML
     container.querySelector(".left-word").innerHTML = wordEntry[0]
     container.querySelector(".right-word").innerHTML = wordEntry[1]
-    container.querySelector("button").onclick = doneCallback
+    container.querySelector(".next-btn").onclick = doneCallback
   }
 
   function showExercise2(wordEntry, container, doneCallback) {
     container.innerHTML = document.querySelector("#exercise2-panel").innerHTML
     container.querySelector(".top-word").innerHTML = wordEntry[0]
     container.querySelector(".bottom-word").onclick = () => {
+      container.querySelector(".bottom-word").classList.add("readonly")
       container.querySelector(".bottom-word").innerHTML = wordEntry[1]
-      container.querySelector(".exercise2-next-btn").style.visibility = "visible"
+      container.querySelector(".next-btn").style.visibility = "visible"
     }
-    container.querySelector(".exercise2-next-btn").onclick = doneCallback
+    container.querySelector(".next-btn").onclick = doneCallback
   }
 
   function showExercise3(wordEntry, allWordEntries, container, doneCallback) {
@@ -205,7 +262,7 @@
     let all = allWordEntries.filter(x => x !== wordEntry)
 
     function rngWord() {
-      let result = all[Math.floor(Math.random() * all.length)] || ["", ""]
+      let result = all[Math.floor(Math.random() * all.length)]
       all = all.filter(x => x !== result)
       return result
     }
@@ -215,6 +272,10 @@
     function fillOption(i) {
       let word = rightOptionIndex === i ? wordEntry : rngWord()
       let optionBtn = container.querySelector(`.option${i}-word`)
+      if (!word) {
+        optionBtn.style.display = "none"
+        return
+      }
       optionBtn.innerHTML = word[1]
       optionBtn.onclick = () => {
         if (rightOptionIndex === i) {
@@ -238,6 +299,7 @@
     let selectedLeftIndex = -1
     let selectedRightIndex = -1
     let matches = 0
+
     function checkMatch() {
       let left = container.querySelector(`.left${selectedLeftIndex + 1}-word`)
       let right = container.querySelector(`.right${selectedRightIndex + 1}-word`)
@@ -262,6 +324,7 @@
       selectedLeftIndex = -1
       selectedRightIndex = -1
     }
+
     for (let i = 0; i < indexes.length; ++i) {
       let closureI = i
       let left = container.querySelector(`.left${i + 1}-word`)
@@ -313,7 +376,9 @@
     showExerciseSeries(shuffledGroups, container, showExerciseCallback, doneCallback)
   }
 
+  let lessonStart
   document.querySelector("#start-btn").onclick = () => {
+    lessonStart = new Date()
     let lessonPanel = document.querySelector("#lesson-panel")
     let lessonWords = getLeastUsedWords(configs.batchSize)
     let doneCallback = () => showLessonEnd(lessonWords, lessonPanel)
@@ -334,29 +399,30 @@
       doneCallback = () => showExerciseSeries(lessonWords, lessonPanel, showExercise1, closureCallback)
     }
     doneCallback()
+    document.querySelector("#main-panel").style.display = "none"
     lessonPanel.style.display = "block"
   }
 </script>
 
-<div id="lesson-end-panel" style="display:none">
-  <div>done</div>
+<div id="lesson-end-panel" style="display:none"> <!--todo close button-->
+  <div class="summary"></div>
   <button>close</button>
 </div>
 
 <div id="exercise1-panel" style="display:none">
-  <div class="left-word"></div>
-  <div class="right-word"></div>
-  <button>next</button>
+  <button class="readonly left-word"></button>
+  <button class="readonly right-word"></button>
+  <button class="next-btn">next</button>
 </div>
 
 <div id="exercise2-panel" style="display:none">
-  <div class="top-word"></div>
+  <button class="readonly top-word"></button>
   <button class="bottom-word">show</button>
-  <button class="exercise2-next-btn" style="visibility:hidden">next</button>
+  <button class="next-btn" style="visibility:hidden">next</button>
 </div>
 
 <div id="exercise3-panel" style="display:none">
-  <div class="guess-word"></div>
+  <button class="readonly guess-word"></button>
   <button class="option1-word"></button>
   <button class="option2-word"></button>
   <button class="option3-word"></button>
@@ -364,14 +430,14 @@
 </div>
 
 <div id="exercise4-panel" style="display:none">
-  <button class="left1-word" style="visibility:hidden"></button>
-  <button class="right1-word" style="visibility:hidden"></button><br>
-  <button class="left2-word" style="visibility:hidden"></button>
-  <button class="right2-word" style="visibility:hidden"></button><br>
-  <button class="left3-word" style="visibility:hidden"></button>
-  <button class="right3-word" style="visibility:hidden"></button><br>
-  <button class="left4-word" style="visibility:hidden"></button>
-  <button class="right4-word" style="visibility:hidden"></button>
+  <button class="word-column left1-word" style="visibility:hidden"></button>
+  <button class="word-column right1-word" style="visibility:hidden"></button>
+  <button class="word-column left2-word" style="visibility:hidden"></button>
+  <button class="word-column right2-word" style="visibility:hidden"></button>
+  <button class="word-column left3-word" style="visibility:hidden"></button>
+  <button class="word-column right3-word" style="visibility:hidden"></button>
+  <button class="word-column left4-word" style="visibility:hidden"></button>
+  <button class="word-column right4-word" style="visibility:hidden"></button>
 </div>
 
 </body>
