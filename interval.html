@@ -198,9 +198,10 @@
   function updateMetadata(wordEntries) {
     let timestamp = Date.now()
     wordEntries.forEach(word => {
+      let timesUsed = wordsMetadata[metadataKey(word)] ? wordsMetadata[metadataKey(word)].timesUsed + 1 : 1
       wordsMetadata[metadataKey(word)] = {
         "lastUsed": timestamp,
-        "timesUsed": (wordsMetadata[metadataKey(word)] || 0) + 1
+        "timesUsed": timesUsed
       }
     })
     saveWordsMetadata()
@@ -230,7 +231,7 @@
     if (container.scrollWidth > container.clientWidth) {
       let style = getComputedStyle(container)
       let padding = parseInt(style.paddingLeft) + parseInt(style.paddingRight)
-      let ratio = (container.clientWidth - padding) / (container.scrollWidth - padding)
+      let ratio = (container.clientWidth - padding) / container.scrollWidth
       let n = parseInt(style.fontSize)
       container.style.fontSize = Math.floor(n * ratio) + "px"
     }
@@ -311,8 +312,7 @@
     enableExercise4: true,
     theme: "light",
     exerciseDelayMillis: 300,
-    configsDelayMillis: 600,
-    enableNotifications: false //todo
+    configsDelayMillis: 600
   }
   let loadedConfigs = JSON.parse(localStorage.getItem("configs"))
   let configs = {...defaultConfigs, ...loadedConfigs}
@@ -396,8 +396,8 @@
   }
   document.querySelector("#do-import-btn").onclick = () => {
     try {
-      let [iConfigs, iWords, iMetadata] = atob(document.querySelector("#import-panel textarea").value)
-          .split("|")
+      let [iConfigs, iWords, iMetadata] = document.querySelector("#import-panel textarea").value
+          .split("\n")
           .map(x => JSON.parse(x))
       configs = {...configs, ...iConfigs}
       words = iWords
@@ -434,7 +434,7 @@
   }
   document.querySelector("#do-export-btn").onclick = () => {
     document.querySelector("#export-panel textarea").value =
-        btoa(JSON.stringify(configs) + "|" + JSON.stringify(words) + "|" + JSON.stringify(wordsMetadata))
+        JSON.stringify(configs) + "\n" + JSON.stringify(words) + "\n" + JSON.stringify(wordsMetadata)
   }
   document.querySelector("#copy-export-btn").onclick = () => {
     document.querySelector("#export-panel textarea").select()
