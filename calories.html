@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Calories</title>
+<style>
+  :root {
+    --bg: #121212;
+    --surface: #1e1e1e;
+    --border: #333;
+    --text: #e8e8e8;
+    --muted: #9a9a9a;
+    --accent: #2f6fe4;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 12px;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.4 system-ui, sans-serif;
+  }
+
+  button, input, textarea {
+    font: inherit;
+    color: inherit;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+  }
+
+  button { cursor: pointer; }
+  button:active { filter: brightness(1.3); }
+
+  #total {
+    width: 100%;
+    margin-bottom: 12px;
+    border: none;
+    background: var(--accent);
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .row input { flex: 2; min-width: 0; }
+  .row input[type="number"] { flex: 1; }
+
+  .dish {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+  }
+
+  .dish .kcal { color: var(--muted); white-space: nowrap; }
+  .symbol { flex: none; }
+
+  .yellow { color: #f5c518; }
+  .gray { color: #777; }
+  .red { color: #e53935; }
+
+  dialog {
+    width: min(90vw, 480px);
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+  dialog p { margin-top: 0; }
+
+  textarea {
+    width: 100%;
+    min-height: 10em;
+    margin-bottom: 8px;
+    resize: vertical;
+  }
+
+  .actions { display: flex; gap: 8px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+
+<button id="total"></button>
+
+<form id="add-form" class="row">
+  <input id="name" type="text" placeholder="Dish" required>
+  <input id="weight" type="number" inputmode="decimal" min="0" step="any" placeholder="g" required>
+  <input id="calories" type="number" inputmode="decimal" min="0" step="any" placeholder="kcal/100" required>
+  <button class="symbol">+</button>
+</form>
+
+<div id="favorites"></div>
+<div id="saved"></div>
+
+<dialog id="summary-dialog">
+  <textarea id="summary" readonly></textarea>
+  <div class="actions">
+    <button id="copy">copy</button>
+    <button id="close">close</button>
+  </div>
+</dialog>
+
+<dialog id="confirm-dialog">
+  <form method="dialog">
+    <p>Are you sure?</p>
+    <div class="actions">
+      <button value="yes">yes</button>
+      <button value="no">no</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  const today = new Date().getDate();
+
+  // ---------- storage ----------
+
+  function load(key) {
+    const json = localStorage.getItem(key);
+    return json ? JSON.parse(json) : [];
+  }
+
+  function save() {
+    localStorage.setItem("consumed", JSON.stringify(consumed));
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+    localStorage.setItem("saved", JSON.stringify(saved));
+  }
+
+  // ---------- data ----------
+
+  let consumed = load("consumed").filter(x => x.dayOfMonth === today);  // { name, times, dayOfMonth }
+  let favorites = load("favorites");  // { name, weight, caloriesPer100 }
+  let saved = load("saved");          // { name, weight, caloriesPer100 }
+
+  function findDish(name) {
+    return favorites.find(x => x.name === name) ?? saved.find(x => x.name === name);
+  }
+
+  function calories(dish) {
+    return dish ? Math.round(dish.weight * dish.caloriesPer100 / 100) : 0;
+  }
+
+  function totalCalories() {
+    return consumed.reduce((sum, record) => sum + calories(findDish(record.name)) * record.times, 0);
+  }
+
+  function consume(name) {
+    const record = consumed.find(x => x.name === name);
+    if (record) {
+      record.times++;
+    } else {
+      consumed.push({ name, times: 1, dayOfMonth: today });
+    }
+    saveAndRender();
+  }
+
+  function moveDish(dish, from, to) {
+    from.splice(from.indexOf(dish), 1);
+    to.push(dish);
+    saveAndRender();
+  }
+
+  function removeSaved(dish) {
+    saved.splice(saved.indexOf(dish), 1);
+    saveAndRender();
+  }
+
+  function summaryText() {
+    const names = consumed.map(x => x.name).join("\n");
+    const calcExpr = consumed.map(x => calories(findDish(x.name)) + "*" + x.times).join("+") + "=" + totalCalories();
+    return names + "\n" + calcExpr;
+  }
+
+  // ---------- rendering ----------
+
+  function createButton(content, className, onClick) {
+    const button = document.createElement("button");
+    button.className = className;
+    button.append(...content);
+    button.addEventListener("click", onClick);
+    return button;
+  }
+
+  function createSpan(text, className = "") {
+    const span = document.createElement("span");
+    span.className = className;
+    span.textContent = text;
+    return span;
+  }
+
+  function dishButton(dish) {
+    const content = [createSpan(dish.name), createSpan(`${calories(dish)} kcal`, "kcal")];
+    return createButton(content, "dish", () => consume(dish.name));
+  }
+
+  function favoriteRow(dish) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.append(
+      dishButton(dish),
+      createButton(["★"], "symbol yellow", () => moveDish(dish, favorites, saved)),
+    );
+    return row;
+  }
+
+  function savedRow(dish) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.append(dishButton(dish));
+    const notConsumed = consumed.every(x => x.name !== dish.name);
+    if (notConsumed) {
+      row.append(createButton(["✕"], "symbol red", () => confirmRemoval(dish)));
+    }
+    row.append(createButton(["★"], "symbol gray", () => moveDish(dish, saved, favorites)));
+    return row;
+  }
+
+  function render() {
+    document.getElementById("total").textContent = `${totalCalories()} kcal`;
+    document.getElementById("favorites").replaceChildren(...favorites.map(favoriteRow));
+    document.getElementById("saved").replaceChildren(...saved.map(savedRow));
+  }
+
+  function saveAndRender() {
+    save();
+    render();
+  }
+
+  // ---------- add form ----------
+
+  document.getElementById("add-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const name = document.getElementById("name").value.trim();
+    const weight = Number(document.getElementById("weight").value);
+    const caloriesPer100 = Number(document.getElementById("calories").value);
+    if (!name) return;
+
+    if (!findDish(name)) {
+      saved.push({ name, weight, caloriesPer100 });
+    }
+    consume(name);
+    event.target.reset();
+  });
+
+  // ---------- summary dialog ----------
+
+  const summaryDialog = document.getElementById("summary-dialog");
+  const copyButton = document.getElementById("copy");
+
+  document.getElementById("total").addEventListener("click", () => {
+    document.getElementById("summary").value = summaryText();
+    summaryDialog.showModal();
+  });
+
+  copyButton.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(document.getElementById("summary").value);
+    copyButton.textContent = "done";
+    setTimeout(() => copyButton.textContent = "copy", 1000);
+  });
+
+  document.getElementById("close").addEventListener("click", () => summaryDialog.close());
+
+  // ---------- confirm dialog ----------
+
+  const confirmDialog = document.getElementById("confirm-dialog");
+  let dishToRemove = null;
+
+  function confirmRemoval(dish) {
+    dishToRemove = dish;
+    confirmDialog.returnValue = "";
+    confirmDialog.showModal();
+  }
+
+  confirmDialog.addEventListener("close", () => {
+    if (confirmDialog.returnValue === "yes") removeSaved(dishToRemove);
+    dishToRemove = null;
+  });
+
+  render();
+</script>
+</body>
+</html>

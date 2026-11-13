@@ -7,3 +7,5 @@
 [path-converter](http://tim-zh.github.io/web-tools/path-converter)
 
 [interval repetition for word learning](http://tim-zh.github.io/web-tools/interval)
+
+[calorie tracking](http://tim-zh.github.io/web-tools/calories)
