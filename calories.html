@@ -181,7 +181,8 @@
 
   function summaryText() {
     const names = consumed.map(x => x.name).join("\n");
-    const calcExpr = consumed.map(x => calories(findDish(x.name)) + "*" + x.times).join("+") + "=" + totalCalories();
+    const times = n => n > 1 ? ("*" + n) : "";
+    const calcExpr = consumed.map(x => calories(findDish(x.name)) + times(x.times)).join("+") + "=" + totalCalories();
     return names + "\n" + calcExpr;
   }
 
